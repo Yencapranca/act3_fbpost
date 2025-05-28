@@ -1,16 +1,37 @@
 import 'dart:convert';
 import 'dart:io';
-
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
 
+// Function to format time ago
+String _formatTimeAgo(String dateString) {
+  final date = DateTime.parse(dateString);
+  final now = DateTime.now();
+  final difference = now.difference(date);
+
+  if (difference.inSeconds < 60) {
+    return 'Just now';
+  } else if (difference.inMinutes < 60) {
+    return '${difference.inMinutes}m ago';
+  } else if (difference.inHours < 24) {
+    return '${difference.inHours}h ago';
+  } else if (difference.inDays < 7) {
+    return '${difference.inDays}d ago';
+  } else {
+    return DateFormat('MMM d').format(date);
+  }
+}
+
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -19,13 +40,16 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.grey[200],
       ),
-      home: FacebookHomePage(),
+      home: const FacebookHomePage(),
     );
   }
 }
 
 class FacebookHomePage extends StatefulWidget {
+  const FacebookHomePage({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _FacebookHomePageState createState() => _FacebookHomePageState();
 }
 
@@ -47,7 +71,12 @@ class _FacebookHomePageState extends State<FacebookHomePage> {
 
       if (response.statusCode == 200) {
         setState(() {
-          posts = json.decode(response.body);
+          // Explicitly cast and sort posts by date (newest first)
+          posts = (json.decode(response.body) as List)
+              .cast<Map<String, dynamic>>()
+              .toList();
+          posts.sort((a, b) => DateTime.parse(b['created_at'])
+              .compareTo(DateTime.parse(a['created_at'])));
         });
       } else {
         _logger.severe(
@@ -72,23 +101,19 @@ class _FacebookHomePageState extends State<FacebookHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Facebook Replication'),
-        centerTitle: false,
-        elevation: 1,
-      ),
       body: RefreshIndicator(
         onRefresh: _getPosts,
         child: ListView(
           children: [
             // Post creation at the top
             PostCreationCard(onPostPressed: _showPostDialog),
-            
+
             // Display all posts
             if (posts.isEmpty)
               const Center(child: Text('No posts yet. Create one!'))
             else
-              ...posts.reversed.map((post) => FacebookPostCard(
+              // Display posts in sorted order (newest first)
+              ...posts.map((post) => FacebookPostCard(
                     post: post,
                     key: ValueKey(post['_id']),
                   )),
@@ -116,7 +141,7 @@ class PostCreationCard extends StatelessWidget {
             Row(
               children: [
                 const UserAvatar(
-                  imagePath: "assets/images/wonyoung1.jpg",
+                  imagePath: "assets/images/yen_fancy.jpg",
                   radius: 20,
                 ),
                 const SizedBox(width: 10),
@@ -169,6 +194,7 @@ class PostCreationDialog extends StatefulWidget {
       : super(key: key);
 
   @override
+  // ignore: library_private_types_in_public_api
   _PostCreationDialogState createState() => _PostCreationDialogState();
 }
 
@@ -208,6 +234,7 @@ class _PostCreationDialogState extends State<PostCreationDialog> {
 
         if (response.statusCode == 200) {
           widget.onPostCreated();
+          // ignore: use_build_context_synchronously
           Navigator.pop(context);
         } else {
           _logger.severe(
@@ -233,6 +260,7 @@ class _PostCreationDialogState extends State<PostCreationDialog> {
         final response = await request.send();
         if (response.statusCode == 200) {
           widget.onPostCreated();
+          // ignore: use_build_context_synchronously
           Navigator.pop(context);
         } else {
           _logger.severe(
@@ -279,7 +307,7 @@ class _PostCreationDialogState extends State<PostCreationDialog> {
             const Divider(),
             const ListTile(
               leading: UserAvatar(
-                imagePath: "assets/images/wonyoung1.jpg",
+                imagePath: "assets/images/yen_fancy.jpg",
                 radius: 20,
               ),
               title: Text(
@@ -357,14 +385,16 @@ class FacebookPostCard extends StatelessWidget {
           // User Profile Section
           ListTile(
             leading: const UserAvatar(
-              imagePath: "assets/images/wonyoung1.jpg",
+              imagePath: "assets/images/yen_fancy.jpg",
               radius: 20,
             ),
             title: const Text(
               'Yen Capranca',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text(post['created_at'] ?? 'Just now'),
+            // Use _formatTimeAgo for readable date
+            subtitle: Text(
+                post['created_at'] != null ? _formatTimeAgo(post['created_at']) : 'Just now'),
             trailing: const Icon(Icons.more_horiz),
           ),
 
@@ -416,14 +446,14 @@ class FacebookPostCard extends StatelessWidget {
             ),
 
           // Like and Comment Count
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.thumb_up, color: Colors.blue, size: 18),
-                const SizedBox(width: 8.0),
-                const Text("100 Likes"),
-                const Spacer(),
+                Icon(Icons.thumb_up, color: Colors.blue, size: 18),
+                SizedBox(width: 8.0),
+                Text("100 Likes"),
+                Spacer(),
                 Text("30 Comments • 20 Shares"),
               ],
             ),
@@ -480,6 +510,7 @@ class LikeButton extends StatefulWidget {
   const LikeButton({Key? key}) : super(key: key);
 
   @override
+  // ignore: library_private_types_in_public_api
   _LikeButtonState createState() => _LikeButtonState();
 }
 
@@ -527,3 +558,5 @@ Widget _actionButton(IconData icon, String label) {
     label: Text(label, style: const TextStyle(color: Colors.grey)),
   );
 }
+
+

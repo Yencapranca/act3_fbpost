@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../widgets/newsfeed.dart';
-import '../constants.dart';
 import 'facebookpost.dart';
 
 class NewsFeedScreen extends StatelessWidget {
@@ -15,7 +13,7 @@ class NewsFeedScreen extends StatelessWidget {
           // Facebook post creation and feed
           SizedBox(
             height: MediaQuery.of(context).size.height,
-            child: FacebookHomePage(),
+            child: const FacebookHomePage(),
           ),
           
           // Your existing news feed cards
